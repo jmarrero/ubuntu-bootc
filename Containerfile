@@ -3,8 +3,9 @@ FROM docker.io/library/ubuntu:questing
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
-  apt install -y btrfs-progs dosfstools e2fsprogs fdisk linux-firmware linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
+  apt install -y cloud-init btrfs-progs dosfstools e2fsprogs fdisk linux-firmware linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
+  ln -s ../cloud-init.target /usr/lib/systemd/system/default.target.wants && \
   apt clean -y
 
 # Setup a temporary root passwd (changeme) for dev purposes
