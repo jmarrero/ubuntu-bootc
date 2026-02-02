@@ -1,13 +1,5 @@
 # Ubuntu Bootc with Cloud-Init
 
-> **Note:** Converting from an Ubuntu package-based system to an Ubuntu bootc system using `bootc install to-existing-root` currently fails with the following error:
->
-> ```
-> error: Installing to filesystem: Unable to pull container image containers-storage:ghcr.io/jmarrero/ubuntu-bootc:latest: Failed to pull config Descriptor { media_type: ImageConfig, digest: Digest { algorithm: Sha256, value: "sha256:f7360480f8a16c9790c4d6d29df48d5bd5ddeb9b469c4346be9967afe229029f", split: 6 }, size: 5259, urls: None, annotations: None, platform: None, artifact_type: None, data: None }: failed to invoke method GetBlob: locating item named "sha256:b9ccbed825894d3ea58a5fbe13083f08e28b94676a7045b8644fc79b25cd7437" for image with ID "f7360480f8a16c9790c4d6d29df48d5bd5ddeb9b469c4346be9967afe229029f" (consider removing the image to resolve the issue): file does not exist
-> ```
->
-> This is a work in progress.
-
 An example [Ubuntu](https://ubuntu.com/) bootable container image with [cloud-init](https://cloud-init.io/) built-in, based on the [bootcrew ubuntu-bootc](https://github.com/bootcrew-dev/ubuntu-bootc) project.
 
 This image demonstrates how to build cloud-init support into a [bootc](https://github.com/bootc-dev/bootc) container image, enabling automatic instance configuration on first boot in cloud environments.
