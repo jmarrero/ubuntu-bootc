@@ -3,10 +3,13 @@ FROM docker.io/library/ubuntu:questing
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
-  apt install -y cloud-init btrfs-progs dosfstools e2fsprogs fdisk linux-firmware linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
+  apt install -y network-manager cloud-init btrfs-progs dosfstools e2fsprogs fdisk linux-firmware linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
   ln -s ../cloud-init.target /usr/lib/systemd/system/default.target.wants && \
+  ln -s /usr/lib/systemd/system/NetworkManager.service /usr/lib/systemd/system/multi-user.target.wants/NetworkManager.service && \
   apt clean -y
+
+RUN mkdir -p /etc/netplan && printf "network:\n  version: 2\n  renderer: NetworkManager\n  ethernets:\n    all-interfaces:\n      match:\n        name: \"en*\"\n      dhcp4: true" > /etc/netplan/01-dhcp.yaml
 
 # Setup a temporary root passwd (changeme) for dev purposes
 # RUN apt update -y && apt install -y whois
