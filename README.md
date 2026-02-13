@@ -1,3 +1,5 @@
+**STILL CAN'T INJECT THE SSHKEY** WORK IN PROGRESS.
+
 Select the image for your arch, will be done with a manifest once these get sorted: https://github.com/bootc-dev/bootc/issues/1703 & https://github.com/containers/composefs-rs/pull/210
 
 From the liveISO close the installer and open a terminal.
