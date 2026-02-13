@@ -3,16 +3,19 @@ FROM docker.io/library/ubuntu:questing
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
-  apt install -y openssh-server btrfs-progs dosfstools e2fsprogs fdisk linux-firmware linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
+  apt install -y nano snapd sudo openssh-server btrfs-progs dosfstools e2fsprogs fdisk linux-firmware linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
   ln -s /usr/lib/systemd/system/ssh.service /etc/systemd/system/multi-user.target.wants/ssh.service && \
   ln -s /usr/lib/systemd/system/systemd-networkd.service /usr/lib/systemd/system/multi-user.target.wants/systemd-networkd.service && \
   ln -s /usr/lib/systemd/system/systemd-resolved.service /usr/lib/systemd/system/multi-user.target.wants/systemd-resolved.service && \
+  ln -s /lib/systemd/system/snapd.service /etc/systemd/system/multi-user.target.wants/snapd.service && \
+  ln -s /lib/systemd/system/snapd.socket /etc/systemd/system/sockets.target.wants/snapd.socket && \
   apt clean -y
 
 # Create a tmpfiles configuration to manage the symlink at boot time
 RUN mkdir -p /usr/lib/tmpfiles.d && \
     printf "L /etc/resolv.conf - - - - /run/systemd/resolve/stub-resolv.conf" > /usr/lib/tmpfiles.d/resolved-fix.conf
+    printf "d /var/lib/snapd 0755 root root -\nd /var/cache/snapd 0755 root root -\nd /var/snap 0755 root root -" | tee -a "/usr/lib/tmpfiles.d/bootc-base-dirs.conf"
 
 # 1. Create the systemd-networkd config directory
 RUN mkdir -p /etc/systemd/network/
@@ -21,8 +24,8 @@ RUN mkdir -p /etc/systemd/network/
 RUN printf '[Match]\nName=e*\n\n[Network]\nDHCP=yes\n' > /etc/systemd/network/10-eth-dhcp.network
 
 # Setup a temporary root passwd (changeme) for dev purposes
-RUN apt update -y && apt install -y whois
-RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
+# RUN apt update -y && apt install -y whois
+# RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
 
 ENV CARGO_HOME=/tmp/rust
 ENV RUSTUP_HOME=/tmp/rust
