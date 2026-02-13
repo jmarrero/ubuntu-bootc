@@ -6,8 +6,24 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
   apt install -y openssh-server btrfs-progs dosfstools e2fsprogs fdisk linux-firmware linux-image-generic skopeo systemd systemd-boot* xfsprogs && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
   ln -s /usr/lib/systemd/system/ssh.service /etc/systemd/system/multi-user.target.wants/ssh.service && \
+  ln -s /usr/lib/systemd/system/systemd-networkd.service /usr/lib/systemd/system/multi-user.target.wants/systemd-networkd.service && \
+  ln -s /usr/lib/systemd/system/systemd-resolved.service /usr/lib/systemd/system/multi-user.target.wants/systemd-resolved.service && \
   apt clean -y
 
+RUN rm -f /etc/resolv.conf && ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+
+RUN mkdir -p /etc/netplan && echo 'network:\n\
+  version: 2\n\
+  renderer: networkd\n\
+  ethernets:\n\
+    all-en-interfaces:\n\
+      match:\n\
+        name: "en*"\n\
+      dhcp4: true\n\
+    all-eth-interfaces:\n\
+      match:\n\
+        name: "eth*"\n\
+      dhcp4: true' > /etc/netplan/01-dhcp.yaml
 
 # Setup a temporary root passwd (changeme) for dev purposes
 RUN apt update -y && apt install -y whois
