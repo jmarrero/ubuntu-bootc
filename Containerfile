@@ -10,8 +10,8 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
 
 
 # Setup a temporary root passwd (changeme) for dev purposes
-# RUN apt update -y && apt install -y whois
-# RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
+RUN apt update -y && apt install -y whois
+RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
 
 ENV CARGO_HOME=/tmp/rust
 ENV RUSTUP_HOME=/tmp/rust
