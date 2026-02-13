@@ -10,7 +10,9 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
   ln -s /usr/lib/systemd/system/systemd-resolved.service /usr/lib/systemd/system/multi-user.target.wants/systemd-resolved.service && \
   apt clean -y
 
-RUN rm -f /etc/resolv.conf && ln -s /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+# Create a tmpfiles configuration to manage the symlink at boot time
+RUN mkdir -p /usr/lib/tmpfiles.d && \
+    printf "L /etc/resolv.conf - - - - /run/systemd/resolve/stub-resolv.conf" > /usr/lib/tmpfiles.d/resolved-fix.conf
 
 RUN mkdir -p /etc/netplan && echo 'network:\n\
   version: 2\n\
