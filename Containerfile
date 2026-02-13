@@ -22,8 +22,8 @@ RUN mkdir -p /etc/systemd/network/
 RUN printf '[Match]\nName=e*\n\n[Network]\nDHCP=yes\n' > /etc/systemd/network/10-eth-dhcp.network
 
 # Setup a temporary root passwd (changeme) for dev purposes
-RUN apt update -y && apt install -y whois
-RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
+# RUN apt update -y && apt install -y whois
+# RUN usermod -p "$(echo "changeme" | mkpasswd -s)" root
 
 ENV CARGO_HOME=/tmp/rust
 ENV RUSTUP_HOME=/tmp/rust
