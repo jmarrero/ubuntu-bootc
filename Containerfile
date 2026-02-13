@@ -8,8 +8,6 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
   ln -s /usr/lib/systemd/system/ssh.service /etc/systemd/system/multi-user.target.wants/ssh.service && \
   ln -s /usr/lib/systemd/system/systemd-networkd.service /usr/lib/systemd/system/multi-user.target.wants/systemd-networkd.service && \
   ln -s /usr/lib/systemd/system/systemd-resolved.service /usr/lib/systemd/system/multi-user.target.wants/systemd-resolved.service && \
-  ln -s /lib/systemd/system/snapd.service /etc/systemd/system/multi-user.target.wants/snapd.service && \
-  ln -s /lib/systemd/system/snapd.socket /etc/systemd/system/sockets.target.wants/snapd.socket && \
   apt clean -y
 
 # Create a tmpfiles configuration to manage the symlink at boot time
