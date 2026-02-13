@@ -14,18 +14,11 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
 RUN mkdir -p /usr/lib/tmpfiles.d && \
     printf "L /etc/resolv.conf - - - - /run/systemd/resolve/stub-resolv.conf" > /usr/lib/tmpfiles.d/resolved-fix.conf
 
-RUN mkdir -p /etc/netplan && echo 'network:\n\
-  version: 2\n\
-  renderer: networkd\n\
-  ethernets:\n\
-    all-en-interfaces:\n\
-      match:\n\
-        name: "en*"\n\
-      dhcp4: true\n\
-    all-eth-interfaces:\n\
-      match:\n\
-        name: "eth*"\n\
-      dhcp4: true' > /etc/netplan/01-dhcp.yaml
+# 1. Create the systemd-networkd config directory
+RUN mkdir -p /etc/systemd/network/
+
+# 2. Write the native .network file (equivalent to your DHCP YAML)
+RUN printf '[Match]\nName=e*\n\n[Network]\nDHCP=yes\n' > /etc/systemd/network/10-eth-dhcp.network
 
 # Setup a temporary root passwd (changeme) for dev purposes
 RUN apt update -y && apt install -y whois
