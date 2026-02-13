@@ -12,7 +12,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
 
 # Create a tmpfiles configuration to manage the symlink at boot time
 RUN mkdir -p /usr/lib/tmpfiles.d && \
-    printf "L /etc/resolv.conf - - - - /run/systemd/resolve/stub-resolv.conf" > /usr/lib/tmpfiles.d/resolved-fix.conf
+    printf "L /etc/resolv.conf - - - - /run/systemd/resolve/stub-resolv.conf" > /usr/lib/tmpfiles.d/resolved-fix.conf && \
     printf "d /var/lib/snapd 0755 root root -\nd /var/cache/snapd 0755 root root -\nd /var/snap 0755 root root -" | tee -a "/usr/lib/tmpfiles.d/bootc-base-dirs.conf"
 
 # 1. Create the systemd-networkd config directory
