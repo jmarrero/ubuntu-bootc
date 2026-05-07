@@ -1,0 +1,15 @@
+#cloud-config
+ssh_authorized_keys:
+  - ssh-ed25519 AAAA...your-key-here...
+# Uncomment below for password access instead of SSH keys:
+# password: ubuntu
+# chpasswd:
+#   expire: false
+# ssh_pwauth: true
+# Note: these packages are needed on the initial Ubuntu VM before bootc install.
+# After reboot into the bootc system, apt is not available (read-only root)
+# and cloud-init will log a warning -- this is expected and harmless.
+packages:
+  - podman
+  - skopeo
+  - buildah
