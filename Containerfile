@@ -51,7 +51,7 @@ RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,
   apt install -y cloud-init nano snapd sudo openssh-server \
     btrfs-progs dosfstools e2fsprogs fdisk \
     linux-firmware/questing-updates linux-image-generic/questing-updates \
-    podman skopeo systemd systemd-boot* xfsprogs ostree libostree-dev dracut && \
+    podman skopeo systemd systemd-boot* xfsprogs ostree libostree-dev dracut tmux && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
   apt clean -y
 
