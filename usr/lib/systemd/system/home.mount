@@ -1,0 +1,14 @@
+[Unit]
+Description=Bind mount /var/home onto /home for snap compatibility
+DefaultDependencies=no
+After=-.mount var.mount
+Before=local-fs.target
+
+[Mount]
+What=/var/home
+Where=/home
+Type=none
+Options=bind
+
+[Install]
+WantedBy=multi-user.target

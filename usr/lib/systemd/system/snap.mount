@@ -1,0 +1,14 @@
+[Unit]
+Description=Bind mount writable snap directory
+DefaultDependencies=no
+After=-.mount var.mount
+Before=local-fs.target snapd.service snapd.socket snapd.snap-repair.service
+
+[Mount]
+What=/var/lib/snapd/snap
+Where=/snap
+Type=none
+Options=bind
+
+[Install]
+WantedBy=multi-user.target

@@ -4,8 +4,6 @@
 # then the final image installs system packages, copies the bootc binaries,
 # and configures the ostree/composefs root layout.
 #
-# Based on the bootcrew/mono build process.
-#
 # Uses a squashed Ubuntu base image (ghcr.io/jmarrero/ubuntu-resolute-squashed)
 # to work around composefs-rs not handling PAX tar headers from umoci/Rockcraft.
 # See: https://github.com/jmarrero/ubuntu-resolute-squashed
@@ -45,33 +43,33 @@ COPY --from=builder /output /
 RUN echo "deb http://archive.ubuntu.com/ubuntu questing main" > /etc/apt/sources.list.d/questing.list && \
     echo "deb http://archive.ubuntu.com/ubuntu questing-updates main" >> /etc/apt/sources.list.d/questing.list
 
-# Install system packages including cloud-init
+# Install system packages including cloud-init and podman
 # Pin linux-image-generic and linux-firmware to questing (6.17) to avoid kernel 7.0 fsverity regression
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root --mount=type=tmpfs,dst=/boot apt update -y && \
   apt install -y cloud-init nano snapd sudo openssh-server \
     btrfs-progs dosfstools e2fsprogs fdisk \
     linux-firmware/questing-updates linux-image-generic/questing-updates \
-    podman skopeo systemd systemd-boot* xfsprogs ostree libostree-dev dracut && \
+    podman skopeo systemd systemd-boot* xfsprogs ostree libostree-dev dracut whois bubblewrap && \
   cp /boot/vmlinuz-* "$(find /usr/lib/modules -maxdepth 1 -type d | tail -n 1)/vmlinuz" && \
   apt clean -y
-
-# Enable cloud-init target
-RUN mkdir -p /usr/lib/systemd/system/default.target.wants && \
-    ln -sf ../cloud-init.target /usr/lib/systemd/system/default.target.wants/cloud-init.target
-
-# Enable services: ssh, systemd-networkd, systemd-resolved
-RUN ln -sf /usr/lib/systemd/system/ssh.service /etc/systemd/system/multi-user.target.wants/ssh.service && \
-    ln -sf /usr/lib/systemd/system/systemd-networkd.service /usr/lib/systemd/system/multi-user.target.wants/systemd-networkd.service && \
-    ln -sf /usr/lib/systemd/system/systemd-resolved.service /usr/lib/systemd/system/multi-user.target.wants/systemd-resolved.service
 
 # Cloud-init bootc-specific config:
 # - growpart targets /sysroot on ostree systems
 # - default user home set to /var/home/ubuntu (not /home/ubuntu) because
 #   /home is a symlink to /var/home on bootc, and cloud-init's ssh_util
 #   rejects symlinks in the authorized_keys path for security
+# - network config disabled (handled by systemd-networkd)
+# Note: cloud-init.target is NOT force-enabled in default.target.wants;
+# the cloud-init-generator + ds-identify will enable it only when a
+# datasource is detected, so boot is not blocked when no datasource exists.
 RUN mkdir -p /etc/cloud/cloud.cfg.d && \
-    printf "growpart:\n  mode: auto\n  devices: [\"/sysroot\"]\nresize_rootfs: false\nsystem_info:\n  default_user:\n    homedir: /var/home/ubuntu\n" \
+    printf "growpart:\n  mode: auto\n  devices: [\"/sysroot\"]\nresize_rootfs: false\nsystem_info:\n  default_user:\n    homedir: /var/home/ubuntu\nnetwork:\n  config: disabled\n" \
     > /etc/cloud/cloud.cfg.d/10_bootc.cfg
+
+# Enable services: ssh, systemd-networkd, systemd-resolved
+RUN ln -sf /usr/lib/systemd/system/ssh.service /etc/systemd/system/multi-user.target.wants/ssh.service && \
+    ln -sf /usr/lib/systemd/system/systemd-networkd.service /usr/lib/systemd/system/multi-user.target.wants/systemd-networkd.service && \
+    ln -sf /usr/lib/systemd/system/systemd-resolved.service /usr/lib/systemd/system/multi-user.target.wants/systemd-resolved.service
 
 # tmpfiles configs: L+ replaces any existing file with a symlink on every boot
 # This fixes DNS by ensuring /etc/resolv.conf points to systemd-resolved
@@ -79,27 +77,28 @@ RUN mkdir -p /usr/lib/tmpfiles.d && \
     printf "L+ /etc/resolv.conf - - - - /run/systemd/resolve/stub-resolv.conf\n" > /usr/lib/tmpfiles.d/resolved-fix.conf && \
     printf "d /var/lib/snapd 0755 root root -\nd /var/cache/snapd 0755 root root -\nd /var/snap 0755 root root -" | tee -a "/usr/lib/tmpfiles.d/bootc-base-dirs.conf"
 
-# Auto-mount ESP at /boot so bootc upgrade/switch can write kernel+initramfs
-# Uses LABEL=UEFI since /dev/disk/by-parttype/ symlinks are not always available
-RUN mkdir -p /usr/lib/systemd/system/local-fs.target.wants && \
-    printf '[Unit]\nDescription=EFI System Partition\n\n[Mount]\nWhat=LABEL=UEFI\nWhere=/boot\nType=vfat\nOptions=umask=0077\n\n[Install]\nWantedBy=local-fs.target\n' > /usr/lib/systemd/system/boot.mount && \
-    ln -sf ../boot.mount /usr/lib/systemd/system/local-fs.target.wants/boot.mount
-
-
-
 # systemd-networkd DHCP config for ethernet interfaces
 RUN mkdir -p /etc/systemd/network/ && \
     printf '[Match]\nName=e*\n\n[Network]\nDHCP=yes\n' > /etc/systemd/network/10-eth-dhcp.network
+
+# Setup root password (changeme) and force change on first login
+# RUN usermod -p "$(echo 'changeme' | mkpasswd -s)" root && \
+#     passwd -e root
 
 # Generate initramfs with bootc dracut module
 RUN --mount=type=tmpfs,dst=/tmp --mount=type=tmpfs,dst=/root \
     --mount=type=bind,from=ctx,source=/,target=/ctx \
     /ctx/shared/initramfs.sh
 
-# Set up ostree/composefs root filesystem layout
+# Snap compatibility: replace ostree symlinks with real directories + bind mount units
+# snap-confine can't rbind-mount through symlinks on composefs
+COPY usr/ usr/
+
+# Set up ostree/composefs root filesystem layout with snap-compatible real directories
 RUN --mount=type=bind,from=ctx,source=/,target=/ctx \
     echo "HOME=/var/home" | tee -a "/etc/default/useradd" && \
-    /ctx/shared/bootc-rootfs.sh
+    /ctx/shared/bootc-rootfs.sh && \
+    systemctl enable snap.mount home.mount root.mount opt.mount mnt.mount srv.mount
 
 # https://bootc-dev.github.io/bootc/bootc-images.html#standard-metadata-for-bootc-compatible-images
 LABEL containers.bootc 1
