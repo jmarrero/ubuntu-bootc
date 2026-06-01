@@ -3,15 +3,11 @@
 # Multi-stage build: a separate builder stage compiles bootc from source,
 # then the final image installs system packages, copies the bootc binaries,
 # and configures the ostree/composefs root layout.
-#
-# Uses a squashed Ubuntu base image (ghcr.io/jmarrero/ubuntu-resolute-squashed)
-# to work around composefs-rs not handling PAX tar headers from umoci/Rockcraft.
-# See: https://github.com/jmarrero/ubuntu-resolute-squashed
 
 FROM scratch AS ctx
 COPY shared/ /shared
 
-FROM ghcr.io/jmarrero/ubuntu-resolute-squashed:latest AS base
+FROM docker.io/library/ubuntu:resolute AS base
 
 # --- Stage 1: Build bootc from source ----------------------------------------
 
