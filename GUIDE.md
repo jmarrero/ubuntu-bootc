@@ -23,12 +23,13 @@ sudo apt install qemu-system-x86 ovmf genisoimage libguestfs-tools
 There are two upstream issues that prevent using Ubuntu 26.04 with bootc/composefs
 out of the box. Both have workarounds built into the image used in this guide:
 
-1. **PAX tar headers (composefs-rs bug)** -- Ubuntu 26.04 is the first release
+1. **PAX tar headers (composefs-rs bug, fixed)** -- Ubuntu 26.04 is the first release
    built with Canonical's [Rockcraft/umoci](https://canonical-rockcraft.readthedocs-hosted.com/)
    tooling, which produces PAX format tars with sub-second mtime headers. composefs-rs
-   cannot round-trip these PAX headers, causing `Layer has incorrect checksum` during install.
-   **Workaround:** the image is built from a [squashed base image](https://github.com/jmarrero/ubuntu-resolute-squashed)
-   that strips PAX headers. ([composefs-rs#290](https://github.com/composefs/composefs-rs/issues/290))
+   could not round-trip these PAX headers, causing `Layer has incorrect checksum` during install.
+   **Status:** Fixed in [composefs-rs#292](https://github.com/composefs/composefs-rs/pull/292) and
+   included in bootc main. Images built from current bootc source can use the stock
+   `ubuntu:resolute` base directly. ([composefs-rs#290](https://github.com/composefs/composefs-rs/issues/290))
 
 2. **Linux 7.0 fsverity regression (kernel bug)** -- Ubuntu 26.04 ships kernel 7.0
    which has a regression breaking composefs boot with `Failed to execute /sbin/init`.
@@ -36,8 +37,9 @@ out of the box. Both have workarounds built into the image used in this guide:
    **Workaround:** the image uses kernel 6.17 from Ubuntu 25.10 (questing) repositories.
    ([bootc#2174](https://github.com/bootc-dev/bootc/issues/2174))
 
-Both workarounds are built into the `ghcr.io/jmarrero/ubuntu-bootc:latest` image.
-The Ubuntu 26.04 userspace is unchanged -- only the base image format and kernel are different.
+The kernel workaround is built into the `ghcr.io/jmarrero/ubuntu-bootc:latest` image.
+The PAX tar fix is included in bootc built from current source.
+The Ubuntu 26.04 userspace is unchanged -- only the kernel is different.
 
 ## Step 1: Set up the working directory
 
@@ -218,7 +220,9 @@ You should see `Installation complete!` at the end.
 > **Note:** The `--root-ssh-authorized-keys` flag injects your SSH keys into
 > the root account via a systemd-tmpfiles rule. The path `/target/home/ubuntu/.ssh/authorized_keys`
 > reads from the host filesystem (mounted at `/target`) where cloud-init
-> already wrote your SSH key. After reboot, SSH as `root` using the same key.
+> already wrote your SSH key. However, cloud-init wraps root's key with a
+> command that rejects root login. After reboot, SSH as `ubuntu` (the
+> cloud-init user persists in `/var`) and use `sudo` for root operations.
 
 ### Install flags explained
 
@@ -286,12 +290,16 @@ sudo reboot
 
 ## Step 16: Verify the bootc system
 
-After reboot, connect via SSH as root (the `--root-ssh-authorized-keys` flag
-injected your SSH key into the root account):
+After reboot, connect via SSH as `ubuntu` (the cloud-init user persists in
+`/var` across the conversion):
 
 ```bash
-ssh -o StrictHostKeyChecking=no -p 2222 root@localhost
+ssh -o StrictHostKeyChecking=no -p 2222 ubuntu@localhost
 ```
+
+> **Note:** Root SSH login is blocked because cloud-init wraps root's
+> `authorized_keys` with a command that rejects direct root access.
+> Use `ubuntu` with `sudo` instead.
 
 Check the system:
 
@@ -314,13 +322,16 @@ wget -q --spider https://google.com && echo "Internet works"
 
 # Networking
 ip addr show | grep "inet "
+
+# Snap (should work on composefs)
+snap version
 ```
 
 Expected output:
 
 ```
 PRETTY_NAME="Ubuntu 26.04 LTS"
-6.17.0-23-generic
+6.17.0-35-generic
 
 composefs:... on / type overlay (ro,relatime,...,verity=require)
 ```
@@ -405,8 +416,10 @@ The EFI boot order was not updated. See [Step 13](#step-13-fix-the-efi-boot-orde
 
 ### `Layer has incorrect checksum` during install
 
-The base image uses PAX tar format. Use a squashed base image or build with
-`podman build --squash-all`. See the [Known Issues](#known-issues-as-of-may-2026) section.
+The base image uses PAX tar format. This was fixed in
+[composefs-rs#292](https://github.com/composefs/composefs-rs/pull/292). If you
+are using an older version of bootc, either update bootc to current main or use
+a squashed base image built with `podman build --squash-all`.
 
 ### `Failed to execute /sbin/init` after switch-root
 
